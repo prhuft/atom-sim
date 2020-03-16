@@ -40,47 +40,78 @@ class AtomSim:
         
         return self.rho, self.t
     
-    def plots(self, show=['populations, fields, coherences'], 
-              loc='upper right'):
+    def plots(self, show=['populations', 'fields', 'mixing angle'], 
+              loc='upper right', coherences=False):
         """ return list of Axes object(s) for the items in 'show'.
             At most 1 Axes object for 'populations' and/or 'coherences'.
+            'coherences': True if population plot should show off-diagonal rho elements.
+                when population plot not shown, this parameter does nothing
         """
         if self.rho is None:
             print('running simulation..')
             self.runsim()
+            
+        def plot_ax(ax, title): # could probably use kwargs here 
+            ax.set_title(title)
+            ax.set_xlim((self.t[0], self.t[-1]))
+            return ax
         
-        pop_str = 'populations'
-        coh_str = 'coherences'
-        field_str = 'fields'
-        rho_plot = pop_str in show or coh_str in show
-        field_plot = 'fields' in show
-        fig, axes = plt.subplots(1, rho_plot + field_plot)
+        def pop_plot(ax, title):
+            ax = plot_ax(ax, title)
+            for n,p in enumerate(self.populations):
+                ax.plot(self.t, p, label=rf'$\rho[{n},{n}]$')
+            if coherences:
+                for n,c in zip(self.idx_c, self.coherences):
+                    # TODO: calculate m,n from self.idx_c
+                    axes[i].plot(self.t, c)#, label=f'rho_{m,n}')
+                    
+        def field_plot(ax, title):
+            ax = plot(ax, title)
+            for i,f in enumerate(self.fields): # these are lambda functions
+                ax.plot(self.t, [f(t) for t in self.t], label=rf'$\Omega${i}')
+                
+        def mixing_plot(ax, title):
+            ax = plot(ax, title)
+            assert len(self.fields) == 2
+            f1, f2 = self.fields 
+            ax.plot(self.t, [atan(f2(t)/f1(t)) for t in self.t]) # double check this
+            
+        plotdict = {'populations': 
+                    {'show': False, 
+                     'title':'Density matrix elements',
+                     'plot_func': pop_plot
+                    },
+                    'fields': 
+                    {'show': False, 
+                     'title':'Applied fields',
+                     'plot_func': field_plot
+                    }
+                    'mixing angle': 
+                    {'show': False, 
+                     'title': 'State mixing angle',
+                     'plot_func': mixing_plot
+                    }
+                   }
+
+        for key in show:
+            if key in plotdict
+            plotdict[key]['show'] = True
+        
+        fig, axes = plt.subplots(1, sum([plotdict[key]['show'] for key in plotdict]))
         if type(axes) != ndarray: # only one subplot
             axes = [axes]
 
-        def population_ax(ax):
-            """ for both population and coherence plots """
-            ax.set_title("Density matrix elements")
-            ax.set_xlim((self.t[0], self.t[-1]))
-            return ax
-
-        def fields_ax(ax):
-            ax.set_title("Applied fields")
-            ax.set_xlim((self.t[0], self.t[-1]))
-            return ax
-
         i = 0
-        if rho_plot:
+        if plotdict['populations']['show']:
             axes[i] = population_ax(axes[i])
-            if pop_str in show:
-                for n,p in enumerate(self.populations):
-                    axes[i].plot(self.t, p, label=rf'$\rho[{n},{n}]$')
-            if coh_str in show:
+            for n,p in enumerate(self.populations):
+                axes[i].plot(self.t, p, label=rf'$\rho[{n},{n}]$')
+            if coherences:
                 for n,c in zip(self.idx_c, self.coherences):
                     # TODO: calculate m,n from self.idx_c
                     axes[i].plot(self.t, c)#, label=f'rho_{m,n}')
             i += 1
-        if field_plot:
+        if plotdict['fields']['show']:
             axes[i] = fields_ax(axes[i])
         for ax in axes:
             ax.legend(loc=loc)
