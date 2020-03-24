@@ -4,13 +4,16 @@ from numpy import *
 from scipy.integrate import solve_ivp
 
 class AtomSim:
-    """Atom internal dynamics simulation. 
-       'rho0': unraveled density matrix, non-redundant elements only
-       'derivs'
-       't_exp'
-    """
     
     def __init__(self, rho0, derivs, t_exp, dt=.01, tcentered=False): 
+        """
+        Atom internal dynamics simulation. 
+        'rho0': unraveled density matrix, non-redundant elements only
+        'derivs': should return RHS elements of ODE
+        't_exp': experiment duration
+        'dt': timestep
+        'tcentered': boolean; whether to shift the time array to be centered at t=0
+        """
         self.rho0 = rho0
         self.rho = None # the solution
         self.derivs = derivs
@@ -63,18 +66,21 @@ class AtomSim:
             if coherences:
                 for n,c in zip(self.idx_c, self.coherences):
                     # TODO: calculate m,n from self.idx_c
-                    axes[i].plot(self.t, c)#, label=f'rho_{m,n}')
+                    ax.plot(self.t, c)#, label=f'rho_{m,n}')
+            return ax
                     
         def field_plot(ax, title):
-            ax = plot(ax, title)
+            ax = plot_ax(ax, title)
             for i,f in enumerate(self.fields): # these are lambda functions
                 ax.plot(self.t, [f(t) for t in self.t], label=rf'$\Omega${i}')
+            return ax
                 
         def mixing_plot(ax, title):
             ax = plot(ax, title)
             assert len(self.fields) == 2
             f1, f2 = self.fields 
             ax.plot(self.t, [atan(f2(t)/f1(t)) for t in self.t]) # double check this
+            return ax
             
         plotdict = {'populations': 
                     {'show': False, 
@@ -85,7 +91,7 @@ class AtomSim:
                     {'show': False, 
                      'title':'Applied fields',
                      'plot_func': field_plot
-                    }
+                    },
                     'mixing angle': 
                     {'show': False, 
                      'title': 'State mixing angle',
@@ -94,25 +100,20 @@ class AtomSim:
                    }
 
         for key in show:
-            if key in plotdict
-            plotdict[key]['show'] = True
+            if key in plotdict:
+                plotdict[key]['show'] = True
         
         fig, axes = plt.subplots(1, sum([plotdict[key]['show'] for key in plotdict]))
         if type(axes) != ndarray: # only one subplot
             axes = [axes]
 
+        ## TODO: just make this a loop over plot dict, and make plot dict and OrderedDict
         i = 0
         if plotdict['populations']['show']:
-            axes[i] = population_ax(axes[i])
-            for n,p in enumerate(self.populations):
-                axes[i].plot(self.t, p, label=rf'$\rho[{n},{n}]$')
-            if coherences:
-                for n,c in zip(self.idx_c, self.coherences):
-                    # TODO: calculate m,n from self.idx_c
-                    axes[i].plot(self.t, c)#, label=f'rho_{m,n}')
+            axes[i] = pop_plot(axes[i], plotdict['populations']['title'])
             i += 1
         if plotdict['fields']['show']:
-            axes[i] = fields_ax(axes[i])
+            axes[i] = field_plot(axes[i], plotdict['populations']['title'])
         for ax in axes:
             ax.legend(loc=loc)
         return fig, axes
@@ -123,7 +124,6 @@ class AtomSim:
             contains the indices of the population terms, and 
             the other the indices of the coherence terms. 
         """        
-
 #         if N == self.dim:
 #             m = self.m
 #         else: 
