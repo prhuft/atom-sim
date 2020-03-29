@@ -50,11 +50,14 @@ class AtomSim:
         return self.rho, self.t
     
     def plots(self, show=['populations', 'fields', 'mixing angle'], 
-              loc='upper right', coherences=False):
-        """ return list of Axes object(s) for the items in 'show'.
-            At most 1 Axes object for 'populations' and/or 'coherences'.
-            'coherences': True if population plot should show off-diagonal rho elements.
-                when population plot not shown, this parameter does nothing
+              loc='upper right', coherences=False, kwargs=None):
+        """ 
+        return list of Axes object(s) for the items in 'show'.
+        At most 1 Axes object for 'populations' and/or 'coherences'.
+        
+        'coherences': True if population plot should show off-diagonal rho elements.
+            when population plot not shown, this parameter does nothing
+                
         """
         if self.rho is None:
             print('simulation hasn\'t been run yet')
@@ -80,7 +83,7 @@ class AtomSim:
         def field_plot(ax, title):
             ax = plot_ax(ax, title)
             for i,f in enumerate(self.fields): # these are lambda functions
-                ax.plot(self.t, [real(f(t)) for t in self.t], label=rf'$\Omega${i}')
+                ax.plot(self.t, [real(f(t)) for t in self.t], label=rf'$\Omega${i+1}')
             return ax
                 
         def mixing_plot(ax, title):
@@ -90,6 +93,8 @@ class AtomSim:
             ax.plot(self.t, [atan(f2(t)/f1(t)) for t in self.t]) # double check this
             return ax
             
+        # plotdict = {plottype: propdict, ...}
+        # want more plot types? add another dict entry and plot function
         plotdict = OrderedDict({'populations': 
                                 {'show': False, 
                                  'title':'Density matrix elements',
@@ -108,27 +113,26 @@ class AtomSim:
             if key in plotdict:
                 plotdict[key]['show'] = True
         
-        fig, axes = plt.subplots(1, sum([plotdict[key]['show'] for key in plotdict]))
+        fig, axes = plt.subplots(1, sum([plotdict[key]['show'] for key in plotdict]),
+                                **kwargs)
         if type(axes) != ndarray: # only one subplot
             axes = [axes]
 
-        ## TODO: just make this a loop over plot dict, and make plot dict and OrderedDict
-        
-        i = 0
-        if plotdict['populations']['show']:
-            axes[i] = pop_plot(axes[i], plotdict['populations']['title'])
-            i += 1
-        if plotdict['fields']['show']:
-            axes[i] = field_plot(axes[i], plotdict['fields']['title'])
-        for ax in axes:
-            ax.legend(loc=loc)
+        ax_idx = 0
+        for propdict in plotdict.values():
+            if propdict['show']:
+                axes[ax_idx] = propdict['plot_func'](axes[ax_idx], propdict['title'])
+                axes[ax_idx].legend(loc=loc)
+                ax_idx += 1
+
         return fig, axes
     
     def rho_idx(self): 
-        """ for a N x N density matrix unraveled into a list of 
-            non-redundant elements, return two lists, one which 
-            contains the indices of the population terms, and 
-            the other the indices of the coherence terms. 
+        """ 
+        for a N x N density matrix unraveled into a list of 
+        non-redundant elements, return two lists, one which 
+        contains the indices of the population terms, and 
+        the other the indices of the coherence terms. 
         """        
 #         if N == self.dim:
 #             m = self.m
