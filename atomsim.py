@@ -1,13 +1,18 @@
 #### modules
 import matplotlib.pyplot as plt
+from collections import OrderedDict
 from numpy import *
 from scipy.integrate import solve_ivp
 
 class AtomSim:
     
-    def __init__(self, rho0, derivs, t_exp, dt=.01, tcentered=False): 
+    def __init__(self, rho0, derivs, t_exp, dt=.01, tcentered=False,
+                fields=[]): 
         """
-        Atom internal dynamics simulation. 
+        Atom internal dynamics simulation. Hence I did not use that acronym.
+        This is essentially just a wrapper class for running the ODE solver
+        with the additon of clean plotting functionality. 
+        
         'rho0': unraveled density matrix, non-redundant elements only
         'derivs': should return RHS elements of ODE
         't_exp': experiment duration
@@ -25,9 +30,10 @@ class AtomSim:
         self.m = len(rho0) # number of non-redunant rho elements
         self.dim = int((-1 + sqrt(1 + 8*self.m))/2)
         self.idx_p, self.idx_c = self.rho_idx()
-        
+
         self.populations = [] # values for each time step
         self.coherences = [] # values for each time step
+        self.fields = fields # fields (lambda expressions) passed into derivs
         
     def runsim(self, idx=0):
         """ returns rho, a list of solutions for each non-redundant density 
@@ -51,10 +57,12 @@ class AtomSim:
                 when population plot not shown, this parameter does nothing
         """
         if self.rho is None:
-            print('running simulation..')
+            print('simulation hasn\'t been run yet')
+            print('running simulation...')
             self.runsim()
-            
-        def plot_ax(ax, title): # could probably use kwargs here 
+        
+        # could probably use kwargs here to allow passing in axes
+        def plot_ax(ax, title): 
             ax.set_title(title)
             ax.set_xlim((self.t[0], self.t[-1]))
             return ax
@@ -62,17 +70,17 @@ class AtomSim:
         def pop_plot(ax, title):
             ax = plot_ax(ax, title)
             for n,p in enumerate(self.populations):
-                ax.plot(self.t, p, label=rf'$\rho[{n},{n}]$')
+                ax.plot(self.t, real(p), label=rf'$\rho[{n},{n}]$')
             if coherences:
                 for n,c in zip(self.idx_c, self.coherences):
                     # TODO: calculate m,n from self.idx_c
-                    ax.plot(self.t, c)#, label=f'rho_{m,n}')
+                    ax.plot(self.t, real(c))#, label=f'rho_{m,n}')
             return ax
                     
         def field_plot(ax, title):
             ax = plot_ax(ax, title)
             for i,f in enumerate(self.fields): # these are lambda functions
-                ax.plot(self.t, [f(t) for t in self.t], label=rf'$\Omega${i}')
+                ax.plot(self.t, [real(f(t)) for t in self.t], label=rf'$\Omega${i}')
             return ax
                 
         def mixing_plot(ax, title):
@@ -82,22 +90,19 @@ class AtomSim:
             ax.plot(self.t, [atan(f2(t)/f1(t)) for t in self.t]) # double check this
             return ax
             
-        plotdict = {'populations': 
-                    {'show': False, 
-                     'title':'Density matrix elements',
-                     'plot_func': pop_plot
-                    },
-                    'fields': 
-                    {'show': False, 
-                     'title':'Applied fields',
-                     'plot_func': field_plot
-                    },
-                    'mixing angle': 
-                    {'show': False, 
-                     'title': 'State mixing angle',
-                     'plot_func': mixing_plot
-                    }
-                   }
+        plotdict = OrderedDict({'populations': 
+                                {'show': False, 
+                                 'title':'Density matrix elements',
+                                 'plot_func': pop_plot},
+                                'fields': 
+                                {'show': False, 
+                                 'title':'Applied fields',
+                                 'plot_func': field_plot},
+                                'mixing angle': 
+                                {'show': False, 
+                                 'title': 'State mixing angle',
+                                 'plot_func': mixing_plot}
+                               })
 
         for key in show:
             if key in plotdict:
@@ -108,12 +113,13 @@ class AtomSim:
             axes = [axes]
 
         ## TODO: just make this a loop over plot dict, and make plot dict and OrderedDict
+        
         i = 0
         if plotdict['populations']['show']:
             axes[i] = pop_plot(axes[i], plotdict['populations']['title'])
             i += 1
         if plotdict['fields']['show']:
-            axes[i] = field_plot(axes[i], plotdict['populations']['title'])
+            axes[i] = field_plot(axes[i], plotdict['fields']['title'])
         for ax in axes:
             ax.legend(loc=loc)
         return fig, axes
