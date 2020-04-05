@@ -208,6 +208,8 @@ def obe_derivs(y0,t,D,O,phi=0,t1=np.inf,t2=np.inf):
 
 	return array([drgg,dree,dreg])
 
+#### Various classes
+
 class dipole_trap:
 	
 	def __init__(self,lmbda,wx,Tdepth,Tatom,wy=None):

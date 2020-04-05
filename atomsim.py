@@ -24,7 +24,7 @@ class AtomSim:
         self.derivs = derivs
         self.t_exp = t_exp # duration
         self.dt = dt # timestep
-        self.t = arange(t_exp,step=self.dt) # the timesteps
+        self.t = arange(self.t_exp,step=self.dt) # the timesteps
         if tcentered == True:
             self.t -= self.t_exp/2
         self.m = len(rho0) # number of non-redunant rho elements
@@ -35,11 +35,20 @@ class AtomSim:
         self.coherences = [] # values for each time step
         self.fields = fields # fields (lambda expressions) passed into derivs
         
-    def runsim(self, idx=0):
-        """ returns rho, a list of solutions for each non-redundant density 
-            matrix element each timestep. 
+    def runsim(self, t_exp=None, dt=None):
+        """ 
+        return (rho, t), where rho is a list of solutions for each 
+        non-redundant density matrix element each timestep and t is the
+        list of timesteps
+            'idx
         """
-        dt = 0.01 # timestep for DE solver
+        if dt != None or t_exp != None: 
+            if t_exp != None:
+                self.t_exp = t_exp
+            if dt != None:
+                self.dt = dt
+            self.t = arange(self.t_exp,step=self.dt) # recompute timesteps
+
         tspan = [self.t[0],self.t[-1]]
         soln = solve_ivp(self.derivs,tspan,self.rho0,t_eval=self.t)
         self.rho = soln.y
