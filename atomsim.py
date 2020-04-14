@@ -1,6 +1,7 @@
 #### modules
 import matplotlib.pyplot as plt
 import numpy as np
+import sympy as sp
 from collections import OrderedDict
 from scipy.integrate import solve_ivp
 from sympy import MatrixSymbol,MatMul,I,Matrix,symbols,Function
@@ -84,13 +85,28 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
     if lambdifyhelp:
         print(help(f))
 
-    # okay for time independent Hamiltonian, but need to work 
-    # out for when H has explicit t dependence
-    def derivs(t, y):  
-        """A wrapper for the lambdagenerated function f"""
-#         y.append(t)
-        return f(*y)
+    # TODO make below general; maybe include the name of an additional args as
+    # a kwarg and then check by name if it is in args
     
+    # check whether t is in the args
+    if 't' in [a.__repr__() for a in args]:    
+        def derivs(t, y): 
+            """
+            the RHS of the Von Neumann eq, i hbar (d/dt) rho = [r, H]
+            
+            't': (float) the current time in the simulation
+            'y': (list-like) the non-redunant le 
+            A wrapper for the lambdagenerated function f
+                
+            """
+    #         y.append(t)
+            return f(*y,t)
+    else:
+        def derivs(t, y):  
+            """A wrapper for the lambdagenerated function f"""
+    #         y.append(t)
+            return f(*y,t)
+            
     return derivs
 
 
@@ -98,7 +114,7 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
 
 class AtomSim:
     
-    def __init__(self, rho0, t_exp, dt=.01, tcentered=False, derivs=None
+    def __init__(self, rho0, t_exp, dt=.01, tcentered=False, derivs=None,
                  hamiltonian=None, decay=None, fields=[]): 
         """
         Atom internal dynamics simulation. Hence I did not use that acronym.
@@ -123,14 +139,14 @@ class AtomSim:
         if tcentered == True:
             self.t -= self.t_exp/2
         self.m = len(rho0) # number of non-redunant rho elements
-        self.dim = int((-1 + sqrt(1 + 8*self.m))/2)
+        self.dim = int((-1 + np.sqrt(1 + 8*self.m))/2)
         self.idx_p, self.idx_c = self.rho_idx()
 
         self.populations = [] # values for each time step
         self.coherences = [] # values for each time step
         self.fields = fields # fields (lambda expressions) passed into derivs
         
-        if hamiltonian is not None:
+        if hamiltonian != None:
             self.derivs = build_derivs(hamiltonian, decay=decay)
         else:
             self.derivs = derivs
@@ -193,9 +209,14 @@ class AtomSim:
         def field_plot(ax, title):
             ax = plot_ax(ax, title)
             for i,f in enumerate(self.fields): # these are lambda functions
+                if type(f) == sp.Mul: 
+                    # TODO: redefine f as lambdified f
+                    assert len(f.free_symbols) == 1, "multivariable fields not supported"
+                    arg = list(f.free_symbols)[0]
+                    f = lambdify(arg, f)
                 ax.plot(self.t, [np.real(f(t)) for t in self.t], 
                         label=rf'$\Omega${i+1}')
-            return ax
+            return ax 
                 
         def mixing_plot(ax, title):
             ax = plot(ax, title)
