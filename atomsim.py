@@ -64,6 +64,10 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
     # calculate [r, H]:
     rhs = -1j*comm(r, hamiltonian)/hbar
 
+    # decay term if supplied:
+    if decay != None:
+        rhs -= MatMul(decay, r)/hbar
+
     # prune off non-redundant elements
     pruned_rhs = []
     for i in range(dims):
@@ -83,8 +87,8 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
         for var,eq in zip(args,rhs):
             print('D[' + str(var) + '] = ' + str(eq) + '\n')
 
-    f = lambdify(args, rhs) # TODO: include t as argument
-    
+    f = lambdify(args, rhs)
+
     if lambdifyhelp:
         print(help(f))
 
@@ -132,7 +136,7 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
                 'D[y]': (list-like) the element-wise derivative of y given by
                     the generated equations. 
             """
-            return f(*y,t)
+            return f(*y)
             
     return derivs
 
@@ -145,18 +149,27 @@ class AtomSim:
     def __init__(self, rho0, t_exp, dt=.01, tcentered=False, derivs=None,
                  hamiltonian=None, decay=None, fields=[]): 
         """
-        Atom internal dynamics simulation. Hence I did not use that acronym.
-        
-        This is essentially just a wrapper class for running the ODE solver
-        with the additon of clean plotting functionality. 
+        Constructor for the
+        The ODEs can be
+        supplied explicitly by the 'derivs' function passed in or, if a
+        'hamiltonian' sympy Matrix is supplied, the von Neumann ODE system will
+        be generated.
         
         Args:
             'rho0': unraveled density matrix, non-redundant elements only
-            'derivs': should return RHS elements of ODE
-            't_exp': experiment duration
-            'dt': timestep
-            'tcentered': boolean; whether to shift the time array to be centered 
-                at t=0
+            'derivs': (function, optional) should return RHS elements of ODE
+            't_exp': (float/int) experiment duration
+            'dt': (float, optional) timestep
+            'tcentered': (bool, optional) whether to shift the time array to be 
+                centered at t=0
+            'hamiltonian': (sympy Matrix, optional) the full Hamiltonian for
+                the system to be solved.
+            'decay': (sympy Matrix, optional) the Louivillian aka decay operator
+                for the system. It will only be used if a Hamiltonian of the 
+                same shape is supplied.
+            'fields': (list of float/int or sympy expressions, optional) 
+                nominally, the fields included in the Hamiltonian, which can be
+                plotted with the option 'fields' in showplot() if supplied.
         """
         assert derivs or hamiltonian, ("Either derivs or hamiltonian must not"+
                                        "be none")
@@ -186,7 +199,11 @@ class AtomSim:
     def runsim(self, t_exp=None, dt=0.01, tcentered=None):
         """ 
         call scipy solve_ivp to solve the system of equations
-        
+
+        Args:
+            't_exp':
+            'dt':
+            'tcentered':
         
         Returns:
             return (rho, t), where rho is a list of solutions for each 
