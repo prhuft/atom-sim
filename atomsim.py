@@ -59,7 +59,6 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
             r[i,j] = symbols(f'r{i}{j}')
             if i > j:
                 r[i,j] = np.conj(r[j,i])
-#     print(r) 
 
     # calculate [r, H]:
     rhs = -1j*comm(r, hamiltonian)/hbar
@@ -70,15 +69,23 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False):
 
     # prune off non-redundant elements
     pruned_rhs = []
+    expected_elems = ""
     for i in range(dims):
         for j in range(dims): 
             if i <= j:
-                pruned_rhs.append(rhs[i,j])
+                expected_elems += f'r{i}{j} '
+                pruned_rhs.append(rhs[i,j])    
 
     # sort arguments in the order of pruned_rhs
     args = list(rhs.free_symbols)
+
+    # check if all the expected elems are in args, if not then add the elem
+    expected_elems = symbols(expected_elems)
+    for elem in expected_elems:
+        if elem not in args:
+            args.append(elem)
+
     args.sort(key=lambda x: x.__repr__())
-    #args.append(symbols('t'))
 
     rhs = pruned_rhs
 
