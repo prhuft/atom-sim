@@ -88,12 +88,20 @@ def hf_zeeman(states,gJ,gI,Bz=None,units='Joules'):
 			return elem
 			
 def hf_coupling(F,mF,J,q,FF,mFF,JJ,I,RME=None):
-	""" Returns the matrix element <F,mF,J|T_q|F',mF',J'>. 
-		'RME': the reduced matrix element, e.g. the D2 line matrix
-		element. If RME=None, the 
-		matrix element is in units of [RME].
+	""" 
+    Returns the matrix element <F,mF,J|T_q|F',mF',J'>. 
+    Args:
+        'RME': the reduced matrix element <alpha;J||r||alpha'J'> with alpha 
+        including quantum numbers not relevant to the coupling, e.g. n. 
+        If RME=None, the matrix element is in units of [RME].
 		
 		I is the nuclear spin of the atom.
+    Returns:
+        'mat_elem': 
+        ## From Mark's notes, eqs. A-50,51. Also see Steck Rb datasheet.
+	    mat_elem = rme*pow(-1,F+JJ+1+I)*sqrt((2*F+1)*(2*JJ+1)) \
+				   *wigner_6j(J,I,F,FF,1,JJ) \
+				   *clebsch_gordan(1,F,FF,q,mF,mFF)
 	"""
 
 	rme = 1
@@ -104,6 +112,32 @@ def hf_coupling(F,mF,J,q,FF,mFF,JJ,I,RME=None):
 	mat_elem = rme*pow(-1,F+JJ+1+I)*sqrt((2*F+1)*(2*JJ+1)) \
 				*wigner_6j(J,I,F,FF,1,JJ) \
 				*clebsch_gordan(1,F,FF,q,mF,mFF)
+
+	return mat_elem
+
+def f_coupling(L,J,mJ,q,LL,JJ,mJJ,I,RME=None):
+	""" 
+    Returns the matrix element <J,mJ|T_q|J',mJ'>. 
+    Args:
+        'RME': the reduced matrix element <alpha;J||r||alpha'J'> with alpha 
+        including quantum numbers not relevant to the coupling, e.g. n. 
+        If RME=None, the matrix element is in units of [RME].
+		
+		I is the nuclear spin of the atom.
+    Returns:
+        'mat_elem': 
+        ## From Mark's notes, eqs. A-50,51. Also see Steck Rb datasheet.
+	    mat_elem = rme*pow(-1,F+JJ+1+I)*sqrt((2*F+1)*(2*JJ+1)) \
+				   *wigner_6j(J,I,F,FF,1,JJ) \
+				   *clebsch_gordan(1,F,FF,q,mF,mFF)
+	"""
+
+	rme = 1
+	if RME!=None:
+		rme = RME
+
+	## From Mark's notes, eqs. A-50,51
+	mat_elem = rme*clebsch_gordan(1,J,JJ,q,mJ,mJJ)
 
 	return mat_elem
 	

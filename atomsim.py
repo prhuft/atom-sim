@@ -27,7 +27,7 @@ def comm(A,B):
 # TODO: could make this a classmethod in AtomSim
 # TODO: could return eqs
 def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False,
-                 _hbar=None):
+                 _hbar=None, get_eqs=False):
     """
     return derivatives for RHS of von Neumann eq given a hamiltonian
     
@@ -149,8 +149,11 @@ def build_derivs(hamiltonian, decay=None, showeqs=False, lambdifyhelp=False,
                     the generated equations. 
             """
             return f(*y)
-            
-    return derivs
+    
+    if not get_eqs:        
+        return derivs
+    else:
+        return derivs, rhs
 
 
 #### the simulation wrapper class; pretties up solving and plotting simulations
@@ -201,14 +204,20 @@ class AtomSim:
         self.populations = [] # values for each time step
         self.coherences = [] # values for each time step
         self.fields = fields # fields (lambda expressions) passed into derivs
+        self.eqs = None
         
         if hamiltonian != None:
-            self.derivs = build_derivs(hamiltonian, decay=decay,_hbar=_hbar)
+            self.derivs, self.eqs = build_derivs(
+                hamiltonian, 
+                decay=decay,
+                _hbar=_hbar, 
+                get_eqs=True
+            )
         else:
             self.derivs = derivs
             
         
-    def runsim(self, t_exp=None, dt=0.01, tcentered=None):
+    def runsim(self, t_exp=None, dt=0.01, tcentered=None, rs_kwargs=None):
         """ 
         call scipy solve_ivp to solve the system of equations
 
@@ -216,6 +225,7 @@ class AtomSim:
             't_exp':
             'dt':
             'tcentered':
+            'rs_kwargs':
         
         Returns:
             return (rho, t), where rho is a list of solutions for each 
@@ -239,8 +249,12 @@ class AtomSim:
             self.t -= self.t_exp/2
 
         tspan = [self.t[0],self.t[-1]]
-        soln = solve_ivp(self.derivs,tspan,self.rho0,t_eval=self.t)
+        if rs_kwargs != None:
+            soln = solve_ivp(self.derivs,tspan,self.rho0, **rs_kwargs)#,t_eval=self.t)
+        else:
+            soln = solve_ivp(self.derivs,tspan,self.rho0)
         self.rho = np.array(soln.y)
+        self.t = soln.t
         
         self.populations = np.array([self.rho[i] for i in self.idx_p])
         self.coherences = np.array([self.rho[i] for i in self.idx_c])
@@ -255,7 +269,6 @@ class AtomSim:
         
         'coherences': True if population plot should show off-diagonal rho 
             elements. when population plot not shown, parameter does nothing
-                
         """
         if self.rho is None:
             print('simulation hasn\'t been run yet')
