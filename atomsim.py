@@ -217,7 +217,7 @@ class AtomSim:
             self.derivs = derivs
             
         
-    def runsim(self, t_exp=None, dt=0.01, tcentered=None, rs_kwargs=None):
+    def runsim(self, t_exp=None, dt=0.01, tcentered=None, ode_kwargs=None):
         """ 
         call scipy solve_ivp to solve the system of equations
 
@@ -225,7 +225,7 @@ class AtomSim:
             't_exp':
             'dt':
             'tcentered':
-            'rs_kwargs':
+            'ode_kwargs':
         
         Returns:
             return (rho, t), where rho is a list of solutions for each 
@@ -249,8 +249,10 @@ class AtomSim:
             self.t -= self.t_exp/2
 
         tspan = [self.t[0],self.t[-1]]
-        if rs_kwargs != None:
-            soln = solve_ivp(self.derivs,tspan,self.rho0, **rs_kwargs)#,t_eval=self.t)
+        
+        # run the solver
+        if ode_kwargs != None:
+            soln = solve_ivp(self.derivs,tspan,self.rho0, **ode_kwargs)#,t_eval=self.t)
         else:
             soln = solve_ivp(self.derivs,tspan,self.rho0)
         self.rho = np.array(soln.y)
@@ -262,7 +264,7 @@ class AtomSim:
         return self.rho, self.t
     
     def plots(self, show=['populations', 'fields', 'mixing angle'], 
-              loc='upper right', coherences=False, kwargs=None):
+              loc='upper right', coherences=False, plt_kwargs=None):
         """ 
         return list of Axes object(s) for the items in 'show'.
         At most 1 Axes object for 'populations' and/or 'coherences'.
@@ -330,8 +332,9 @@ class AtomSim:
             if key in plotdict:
                 plotdict[key]['show'] = True
         
+        # TODO: have option to make rows and columns 
         fig, axes = plt.subplots(1, sum([plotdict[key]['show'] for key in 
-                                 plotdict]), **kwargs)
+                                 plotdict]), **plt_kwargs)
         if type(axes) != np.ndarray: # only one subplot
             axes = [axes]
 
